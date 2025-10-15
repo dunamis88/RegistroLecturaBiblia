@@ -1,0 +1,21 @@
+{
+  "name": "Mi Camino en La Biblia",
+  "short_name": "Biblia App",
+  "description": "Un rastreador de progreso para la lectura de la Biblia.",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#1f2937",
+  "theme_color": "#111827",
+  "icons": [
+    {
+      "src": "biblia-192.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "biblia-512.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ]
+}

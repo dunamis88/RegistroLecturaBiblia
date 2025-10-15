@@ -1,0 +1,961 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mi Camino en La Biblia</title>
+    
+    <!-- PWA: Metadatos para la instalación en el móvil. ¡CRÍTICO! -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#111827"> 
+    <link rel="apple-touch-icon" href="biblia-192.png">
+
+    <!-- Incluimos Tailwind CSS para un diseño moderno y responsivo -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Usamos la fuente Inter (moderna y limpia) */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            min-height: 100vh; 
+            background-color: #1f2937; /* Gris oscuro para el cuerpo */
+            color: #f9fafb; /* Letras blancas para el modo oscuro */
+        }
+        
+        /* Estilos de la tarjeta de libro (adaptados para modo oscuro) */
+        .book-container {
+            transition: all 0s linear; 
+            cursor: pointer;
+            user-select: none; 
+            background-color: #374151; 
+            border-color: #374151; 
+            border-left-width: 8px; 
+        }
+
+        /* Colores para el progreso de la tarjeta (si está en progreso) */
+        .book-container.in-progress {
+            background-color: #1e3a8a; 
+            border-color: #3b82f6; 
+        }
+        /* Colores para el progreso de la tarjeta (si está completa) */
+        .book-container.completed {
+            background-color: #065f46; 
+            border-color: #10b981; 
+        }
+
+        /* Estilos de los botones de capítulos */
+        .chapter-button {
+            padding: 8px 12px;
+            font-size: 0.8rem;
+            border-radius: 0.5rem;
+            transition: background-color 0.2s;
+            cursor: pointer;
+            user-select: none;
+            line-height: 1; 
+            border: 1px solid #4b5563; 
+            white-space: nowrap; 
+            touch-action: manipulation; 
+            position: relative; /* Para posicionar el icono de nota */
+        }
+
+        /* Indicador de nota de capítulo: Punto Blanco */
+        .chapter-button.has-note::after {
+            content: ''; /* Usamos un elemento vacío y lo estilizamos como un círculo */
+            position: absolute;
+            top: 2px;
+            right: 2px;
+            width: 8px; /* Tamaño del punto */
+            height: 8px;
+            background-color: #ffffff; /* Blanco puro */
+            border-radius: 50%;
+            box-shadow: 0 0 4px rgba(255, 255, 255, 0.8); /* Pequeña sombra blanca/brillante */
+        }
+
+        /* Estilos para la barra de progreso global */
+        #global-progress-bar-container {
+            height: 1.5rem; 
+            background-color: #4b5563; 
+            border-radius: 0.5rem;
+            overflow: hidden;
+            position: relative;
+        }
+
+        #global-progress-bar {
+            height: 100%;
+            background-color: #10b981; 
+            transition: width 1s ease-out;
+        }
+
+        #global-percentage-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-weight: 700;
+            color: #f9fafb; 
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5); 
+        }
+        
+        /* Ocultar el scrollbar de la rejilla de capítulos para una vista limpia */
+        .chapter-grid {
+            scrollbar-width: none; 
+        }
+
+        .chapter-grid::-webkit-scrollbar {
+            display: none; 
+        }
+        
+        /* Nuevo estilo para los títulos de las secciones (Antiguo/Nuevo Testamento) */
+        .section-title {
+            color: #9ca3af; 
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+            border-bottom: 2px solid #374151; 
+            padding-bottom: 0.5rem;
+        }
+
+        /* Estilo para el contenedor de la casilla de verificación */
+        .action-checkbox-container {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 0;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.9rem;
+            transition: color 0.2s;
+        }
+
+        /* Estilo para el input de la casilla */
+        .action-checkbox-input {
+            width: 1.25rem;
+            height: 1.25rem;
+            border-radius: 0.25rem;
+            border: 2px solid #4b5563;
+            background-color: #374151;
+            appearance: none; 
+            cursor: pointer;
+            position: relative;
+            transition: background-color 0.2s, border-color 0.2s;
+        }
+
+        /* Estilo cuando la casilla está marcada */
+        .action-checkbox-input:checked {
+            background-color: #10b981; 
+            border-color: #10b981;
+        }
+
+        /* Icono de checkmark personalizado (simulado con un pseudo-elemento) */
+        .action-checkbox-input:checked::before {
+            content: '✓';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 0.9rem;
+            line-height: 1;
+        }
+
+        /* Estilo para el botón de nota del LIBRO (Encabezado) */
+        .note-button {
+            padding: 4px;
+            background-color: transparent;
+            border: none;
+            color: #9ca3af; 
+            font-size: 1.25rem; 
+            border-radius: 0.5rem;
+            transition: color 0.2s, transform 0.1s;
+            cursor: pointer;
+        }
+        .note-button:hover {
+            color: #ccc; 
+            transform: scale(1.1);
+        }
+        /* Resaltar el icono si hay nota de libro */
+        .note-button.has-note {
+            color: #60a5fa; 
+        }
+        .note-button.has-note:hover {
+            color: #3b82f6; 
+        }
+    </style>
+</head>
+<body class="antialiased bg-gray-900 text-gray-100">
+
+    <div class="container mx-auto px-4 py-8 max-w-4xl">
+        
+        <!-- ENCABEZADO Y TÍTULO -->
+        <header class="mb-8">
+            <h1 class="text-3xl md:text-4xl font-extrabold text-white text-left tracking-tight">
+                Mi Camino en La Biblia
+            </h1>
+        </header>
+
+        <!-- TARJETA DE PROGRESO GLOBAL Y RANGO (GAMIFICACIÓN) -->
+        <div id="global-progress-card" class="mb-8 p-6 rounded-xl shadow-2xl bg-gray-800 border border-gray-700">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4">
+                <h2 class="text-lg font-semibold text-green-400 mb-2 sm:mb-0">Progreso Total de La Biblia</h2>
+                <!-- RANGO ACTUAL (Ahora con click para abrir el modal) -->
+                <div class="flex items-center space-x-2 bg-gray-700 py-1 px-3 rounded-full border border-yellow-500 cursor-pointer hover:bg-gray-600 transition-colors" onclick="window.showRanksModal()">
+                    <span id="rank-badge" class="text-xl">🔰</span>
+                    <span class="text-sm font-bold text-yellow-300 whitespace-nowrap" id="rank-name">Novato</span>
+                </div>
+            </div>
+
+            <div id="global-progress-bar-container">
+                <div id="global-progress-bar" style="width: 0%;" class="rounded-lg"></div>
+                <span id="global-percentage-text" class="text-xs">0.00% (0/0 Capítulos)</span>
+            </div>
+        </div>
+        
+        <!-- CONTENEDOR DE LIBROS -->
+        <div id="books-container">
+            <!-- Los libros se renderizarán aquí -->
+        </div>
+
+        <!-- MODAL DE FELICITACIÓN (Libro Completado) -->
+        <div id="completion-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 hidden items-center justify-center p-4 z-50">
+            <div class="bg-gray-800 p-8 rounded-xl shadow-2xl max-w-sm w-full text-center border-t-4 border-green-500 transform transition-transform duration-300 scale-95 opacity-0" id="modal-content">
+                <span class="text-6xl mb-4 block">🎉</span>
+                <h3 class="text-2xl font-bold text-white mb-2" id="modal-book-title">¡Libro Completado!</h3>
+                <p class="text-gray-400 mb-6">¡Felicidades! Has terminado de leer **<span id="completed-book-name" class="font-semibold text-green-400"></span>**.</p>
+                <button onclick="window.hideCompletionModal()" class="px-6 py-2 bg-green-600 text-white font-bold rounded-full hover:bg-green-700 transition-colors shadow-lg">
+                    ¡Excelente!
+                </button>
+            </div>
+        </div>
+        
+        <!-- MODAL DE RANGOS -->
+        <div id="ranks-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 hidden items-center justify-center p-4 z-50">
+            <div class="bg-gray-800 p-6 rounded-xl shadow-2xl max-w-lg w-full text-left border-t-4 border-yellow-500 transform transition-transform duration-300 scale-95 opacity-0" id="ranks-modal-content">
+                <div class="flex justify-between items-center mb-6 border-b border-gray-700 pb-3">
+                    <h3 class="text-2xl font-bold text-yellow-300">Niveles de Progreso (Rangos)</h3>
+                    <button onclick="window.hideRanksModal()" class="text-gray-400 hover:text-white text-3xl font-light leading-none transition-colors">&times;</button>
+                </div>
+                <div id="ranks-list" class="space-y-3 mb-6 max-h-80 overflow-y-auto pr-2">
+                    <!-- Contenido dinámico generado por JS -->
+                </div>
+                <div class="p-4 bg-gray-700 rounded-lg text-center border border-gray-600">
+                    <p class="text-md font-semibold text-white">
+                        ¡Sigue avanzando! Tu disciplina te convertirá en un **Maestro de la Palabra**.
+                    </p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- MODAL PARA NOTAS DEL LIBRO (GENERAL) -->
+        <div id="book-notes-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 hidden items-center justify-center p-4 z-50">
+            <div class="bg-gray-800 p-6 rounded-xl shadow-2xl max-w-md w-full text-left border-t-4 border-blue-500 transform transition-transform duration-300 scale-95 opacity-0" id="book-notes-modal-content">
+                <div class="flex justify-between items-center mb-4 border-b border-gray-700 pb-3">
+                    <h3 class="text-xl font-bold text-blue-300">Notas para el Libro: <span id="book-note-title" class="text-white"></span></h3>
+                    <button onclick="window.hideBookNotesModal()" class="text-gray-400 hover:text-white text-3xl font-light leading-none transition-colors">&times;</button>
+                </div>
+                
+                <textarea 
+                    id="book-note-textarea" 
+                    class="w-full h-40 p-3 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 focus:ring-blue-500 focus:border-blue-500 mb-4" 
+                    placeholder="Escribe aquí tus reflexiones o puntos clave sobre este libro..."></textarea>
+                
+                <div class="flex justify-between items-center">
+                    <button 
+                        id="delete-book-note-button"
+                        onclick="window.deleteBookNote()" 
+                        class="px-4 py-2 bg-red-600 text-white font-bold rounded-full hover:bg-red-700 transition-colors shadow-lg flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
+                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm4 0a1 1 0 10-2 0v6a1 1 0 102 0V8z" clip-rule="evenodd"></path></svg>
+                        Eliminar
+                    </button>
+                    <button 
+                        id="save-book-note-button"
+                        onclick="window.saveBookNote()" 
+                        class="px-6 py-2 bg-blue-600 text-white font-bold rounded-full hover:bg-blue-700 transition-colors shadow-lg">
+                        Guardar Comentario
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- MODAL PARA NOTAS DEL CAPÍTULO (ESPECÍFICO) -->
+        <div id="chapter-notes-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 hidden items-center justify-center p-4 z-50">
+            <div class="bg-gray-800 p-6 rounded-xl shadow-2xl max-w-md w-full text-left border-t-4 border-indigo-500 transform transition-transform duration-300 scale-95 opacity-0" id="chapter-notes-modal-content">
+                <div class="flex justify-between items-center mb-4 border-b border-gray-700 pb-3">
+                    <h3 class="text-xl font-bold text-indigo-300">Nota para: <span id="chapter-note-title" class="text-white"></span></h3>
+                    <button onclick="window.hideChapterNotesModal()" class="text-gray-400 hover:text-white text-3xl font-light leading-none transition-colors">&times;</button>
+                </div>
+                
+                <textarea 
+                    id="chapter-note-textarea" 
+                    class="w-full h-40 p-3 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 focus:ring-indigo-500 focus:border-indigo-500 mb-4" 
+                    placeholder="Escribe aquí tus reflexiones o puntos clave sobre este capítulo..."></textarea>
+                
+                <div class="flex justify-between items-center">
+                    <button 
+                        id="delete-chapter-note-button"
+                        onclick="window.deleteChapterNote()" 
+                        class="px-4 py-2 bg-red-600 text-white font-bold rounded-full hover:bg-red-700 transition-colors shadow-lg flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
+                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm4 0a1 1 0 10-2 0v6a1 1 0 102 0V8z" clip-rule="evenodd"></path></svg>
+                        Eliminar
+                    </button>
+                    <button 
+                        id="save-chapter-note-button"
+                        onclick="window.saveChapterNote()" 
+                        class="px-6 py-2 bg-indigo-600 text-white font-bold rounded-full hover:bg-indigo-700 transition-colors shadow-lg">
+                        Guardar Nota
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- MODAL DE CONFIRMACIÓN DE ELIMINACIÓN DE NOTA -->
+        <div id="delete-note-confirmation-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 hidden items-center justify-center p-4 z-50">
+            <div class="bg-gray-800 p-6 rounded-xl shadow-2xl max-w-sm w-full text-center border-t-4 border-yellow-500 transform transition-transform duration-300 scale-95 opacity-0" id="delete-note-modal-content">
+                <span class="text-4xl mb-4 block">⚠️</span>
+                <h3 class="text-xl font-bold text-white mb-2">Advertencia: Pérdida de Nota</h3>
+                <p id="delete-confirmation-text" class="text-gray-400 mb-6">Si desmarcas este capítulo, su nota asociada se **eliminará permanentemente**.</p>
+                <div class="flex justify-between space-x-4">
+                    <button onclick="window.cancelNoteDeletion()" class="flex-1 px-4 py-2 bg-gray-600 text-white font-bold rounded-full hover:bg-gray-700 transition-colors">
+                        Cancelar
+                    </button>
+                    <button onclick="window.confirmNoteDeletionAction()" class="flex-1 px-4 py-2 bg-red-600 text-white font-bold rounded-full hover:bg-red-700 transition-colors">
+                        Deseleccionar y Borrar
+                    </button>
+                </div>
+            </div>
+        </div>
+
+
+        <!-- ESTADO DE CARGA Y CRÉDITOS -->
+        <footer class="mt-8 text-center text-xs text-gray-500 space-y-1">
+            <p class="font-bold text-gray-400">Mi Camino en La Biblia | 2025. Creado por Cristopher Mancilla.</p>
+            <p id="loading-status">Cargando y guardando progreso localmente...</p>
+        </footer>
+
+    </div>
+
+    <script>
+        // --- DEFINICIÓN DE LIBROS ---
+        const BOOK_DATA = [
+            // Antiguo Testamento
+            { name: "Génesis", chapters: 50 }, { name: "Éxodo", chapters: 40 }, { name: "Levítico", chapters: 27 }, { name: "Números", chapters: 36 }, { name: "Deuteronomio", chapters: 34 },
+            { name: "Josué", chapters: 24 }, { name: "Jueces", chapters: 21 }, { name: "Rut", chapters: 4 }, { name: "1 Samuel", chapters: 31 }, { name: "2 Samuel", chapters: 24 },
+            { name: "1 Reyes", chapters: 22 }, { name: "2 Reyes", chapters: 25 }, { name: "1 Crónicas", chapters: 29 }, { name: "2 Crónicas", chapters: 36 }, { name: "Esdras", chapters: 10 },
+            { name: "Nehemías", chapters: 13 }, { name: "Ester", chapters: 10 }, { name: "Job", chapters: 42 }, { name: "Salmos", chapters: 150 }, { name: "Proverbios", chapters: 31 },
+            { name: "Eclesiastés", chapters: 12 }, { name: "Cantares", chapters: 8 }, { name: "Isaías", chapters: 66 }, { name: "Jeremías", chapters: 52 }, { name: "Lamentaciones", chapters: 5 },
+            { name: "Ezequiel", chapters: 48 }, { name: "Daniel", chapters: 12 }, { name: "Oseas", chapters: 14 }, { name: "Joel", chapters: 3 }, { name: "Amós", chapters: 9 },
+            { name: "Abdías", chapters: 1 }, { name: "Jonás", chapters: 4 }, { name: "Miqueas", chapters: 7 }, { name: "Nahúm", chapters: 3 }, { name: "Habacuc", chapters: 3 },
+            { name: "Sofonías", chapters: 3 }, { name: "Hageo", chapters: 2 }, { name: "Zacarías", chapters: 14 }, { name: "Malaquías", chapters: 4 },
+            // Nuevo Testamento
+            { name: "Mateo", chapters: 28 }, { name: "Marcos", chapters: 16 }, { name: "Lucas", chapters: 24 }, { name: "Juan", chapters: 21 }, { name: "Hechos", chapters: 28 },
+            { name: "Romanos", chapters: 16 }, { name: "1 Corintios", chapters: 16 }, { name: "2 Corintios", chapters: 13 }, { name: "Gálatas", chapters: 6 }, { name: "Efesios", chapters: 6 },
+            { name: "Filipenses", chapters: 4 }, { name: "Colosenses", chapters: 4 }, { name: "1 Tesalonicenses", chapters: 5 }, { name: "2 Tesalonicenses", chapters: 3 }, { name: "1 Timoteo", chapters: 6 },
+            { name: "2 Timoteo", chapters: 4 }, { name: "Tito", chapters: 3 }, { name: "Filemón", chapters: 1 }, { name: "Hebreos", chapters: 13 }, { name: "Santiago", chapters: 5 },
+            { name: "1 Pedro", chapters: 5 }, { name: "2 Pedro", chapters: 3 }, { name: "1 Juan", chapters: 5 }, { name: "2 Juan", chapters: 1 }, { name: "3 Juan", chapters: 1 },
+            { name: "Judas", chapters: 1 }, { name: "Apocalipsis", chapters: 22 }
+        ];
+
+        // --- RANGOS DE GAMIFICACIÓN ---
+        const RANKS = [
+            { name: "Novato", badge: "📖", minPercentage: 0 },
+            { name: "Aprendiz", badge: "🌱", minPercentage: 5 },
+            { name: "Buscador", badge: "🙏", minPercentage: 15 },
+            { name: "Creyente", badge: "🔥", minPercentage: 25 },
+            { name: "Estudioso", badge: "💡", minPercentage: 40 },
+            { name: "Discípulo", badge: "🕊️", minPercentage: 55 },
+            { name: "Servidor", badge: "🌾", minPercentage: 70 },
+            { name: "Sabio", badge: "💎", minPercentage: 80 },
+            { name: "Guía", badge: "🕯️", minPercentage: 90 },
+            { name: "Maestro de la Palabra", badge: "👑", minPercentage: 100 }
+        ];
+
+        // --- VARIABLES GLOBALES ---
+        let readingProgress = {}; 
+        const TOTAL_CHAPTERS = BOOK_DATA.reduce((sum, book) => sum + book.chapters, 0);
+        const PROGRESS_STORAGE_KEY = 'bibleReadingProgress';
+        const NOTES_STORAGE_KEY = 'bibleAllNotes'; 
+
+        let allNotes = {}; 
+        let currentBookNoteKey = null;
+        let currentChapterNoteKey = null;
+        
+        const READ_CLASSES = 'bg-green-600 text-white border-green-700 hover:bg-green-700';
+        const UNREAD_CLASSES = 'bg-gray-700 text-gray-300 border-gray-600 hover:bg-gray-600';
+
+        let pressTimer = null;
+        const LONG_PRESS_THRESHOLD = 500;
+        let isLongPress = false;
+        
+        let actionToConfirm = null;
+
+        // --- FUNCIONES DE ALMACENAMIENTO (LocalStorage) ---
+        function saveNotes() {
+             try {
+                localStorage.setItem(NOTES_STORAGE_KEY, JSON.stringify(allNotes));
+            } catch (error) {
+                console.error("Error al guardar notas en LocalStorage:", error);
+            }
+        }
+
+        function loadNotes() {
+             try {
+                const storedNotes = localStorage.getItem(NOTES_STORAGE_KEY);
+                if (storedNotes) {
+                    allNotes = JSON.parse(storedNotes);
+                } else {
+                    allNotes = {};
+                }
+            } catch (error) {
+                console.error("Error al cargar notas de LocalStorage:", error);
+                allNotes = {};
+            }
+        }
+        
+        function saveProgress() {
+            try {
+                const simpleProgress = {};
+                for (const key in readingProgress) {
+                    simpleProgress[key] = readingProgress[key].read;
+                }
+                localStorage.setItem(PROGRESS_STORAGE_KEY, JSON.stringify(simpleProgress));
+                document.getElementById('loading-status').textContent = 'Progreso guardado automáticamente.';
+            } catch (error) {
+                console.error("Error al guardar en LocalStorage:", error);
+                document.getElementById('loading-status').textContent = 'ERROR al guardar progreso.';
+            }
+        }
+
+        function loadProgress() {
+            try {
+                const storedProgress = localStorage.getItem(PROGRESS_STORAGE_KEY);
+                if (storedProgress) {
+                    const tempProgress = JSON.parse(storedProgress);
+                    readingProgress = {}; 
+                    
+                    for (const key in tempProgress) {
+                        const value = tempProgress[key];
+                        if (typeof value === 'boolean') {
+                            readingProgress[key] = { read: value };
+                        } else if (value && typeof value === 'object' && value.read !== undefined) {
+                            readingProgress[key] = { read: value.read };
+                        } else {
+                            readingProgress[key] = { read: false };
+                        }
+                    }
+                }
+                document.getElementById('loading-status').textContent = 'Progreso cargado con éxito.';
+            } catch (error) {
+                console.error("Error al cargar de LocalStorage:", error);
+                readingProgress = {}; 
+                document.getElementById('loading-status').textContent = 'Error al cargar progreso. Se inició uno nuevo.';
+            }
+        }
+
+        // --- LÓGICA DE MODALES ---
+        window.openBookNotesModal = function(event, bookName) {
+            if(event) event.stopPropagation(); 
+            currentBookNoteKey = bookName;
+            const note = allNotes[bookName] || '';
+            document.getElementById('book-note-title').textContent = bookName;
+            document.getElementById('book-note-textarea').value = note;
+            document.getElementById('delete-book-note-button').disabled = !note;
+            const modal = document.getElementById('book-notes-modal');
+            const modalContent = document.getElementById('book-notes-modal-content');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            setTimeout(() => {
+                modalContent.classList.add('scale-100', 'opacity-100');
+                modalContent.classList.remove('scale-95', 'opacity-0');
+            }, 10);
+        }
+        window.hideBookNotesModal = function() {
+            const modal = document.getElementById('book-notes-modal');
+            const modalContent = document.getElementById('book-notes-modal-content');
+            modalContent.classList.remove('scale-100', 'opacity-100');
+            modalContent.classList.add('scale-95', 'opacity-0');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+                currentBookNoteKey = null; 
+            }, 300);
+        }
+        window.saveBookNote = function() {
+            if (!currentBookNoteKey) return;
+            const noteText = document.getElementById('book-note-textarea').value.trim();
+            if (noteText) {
+                allNotes[currentBookNoteKey] = noteText;
+            } else {
+                delete allNotes[currentBookNoteKey];
+            }
+            saveNotes();
+            updateBookNoteButtonState(currentBookNoteKey);
+            window.hideBookNotesModal();
+        }
+        window.deleteBookNote = function() {
+            if (!currentBookNoteKey) return;
+            delete allNotes[currentBookNoteKey];
+            document.getElementById('book-note-textarea').value = '';
+            saveNotes();
+            updateBookNoteButtonState(currentBookNoteKey);
+            window.hideBookNotesModal();
+        }
+        function updateBookNoteButtonState(bookName) {
+            const buttonId = `note-btn-${bookName.replace(/\s/g, '-')}`;
+            const button = document.getElementById(buttonId);
+            if (button) {
+                const hasNote = !!allNotes[bookName] && allNotes[bookName].length > 0;
+                if (hasNote) {
+                    button.classList.add('has-note');
+                } else {
+                    button.classList.remove('has-note');
+                }
+            }
+        }
+        window.openChapterNotesModal = function(bookName, chapterNumber) {
+            const chapterKey = `${bookName}-${chapterNumber}`;
+            currentChapterNoteKey = chapterKey;
+            const note = allNotes[chapterKey] || '';
+            document.getElementById('chapter-note-title').textContent = `${bookName} - Capítulo ${chapterNumber}`;
+            document.getElementById('chapter-note-textarea').value = note;
+            document.getElementById('delete-chapter-note-button').disabled = !note;
+            const modal = document.getElementById('chapter-notes-modal');
+            const modalContent = document.getElementById('chapter-notes-modal-content');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            setTimeout(() => {
+                modalContent.classList.add('scale-100', 'opacity-100');
+                modalContent.classList.remove('scale-95', 'opacity-0');
+            }, 10);
+        }
+        window.hideChapterNotesModal = function() {
+            const modal = document.getElementById('chapter-notes-modal');
+            const modalContent = document.getElementById('chapter-notes-modal-content');
+            modalContent.classList.remove('scale-100', 'opacity-100');
+            modalContent.classList.add('scale-95', 'opacity-0');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+                currentChapterNoteKey = null; 
+            }, 300);
+        }
+        window.saveChapterNote = function() {
+            if (!currentChapterNoteKey) return;
+            const noteText = document.getElementById('chapter-note-textarea').value.trim();
+            if (noteText) {
+                allNotes[currentChapterNoteKey] = noteText;
+            } else {
+                delete allNotes[currentChapterNoteKey];
+            }
+            saveNotes();
+            updateChapterNoteIndicator(currentChapterNoteKey);
+            window.hideChapterNotesModal();
+        }
+        window.deleteChapterNote = function() {
+            if (!currentChapterNoteKey) return;
+            delete allNotes[currentChapterNoteKey];
+            document.getElementById('chapter-note-textarea').value = '';
+            saveNotes();
+            updateChapterNoteIndicator(currentChapterNoteKey);
+            window.hideChapterNotesModal();
+        }
+        function updateChapterNoteIndicator(chapterKey) {
+            const button = document.getElementById(chapterKey);
+            if (button) {
+                const hasNote = !!allNotes[chapterKey] && allNotes[chapterKey].length > 0;
+                if (hasNote) {
+                    button.classList.add('has-note');
+                } else {
+                    button.classList.remove('has-note');
+                }
+            }
+        }
+        
+        window.showNoteDeletionConfirmation = function(message, onConfirmCallback) {
+            actionToConfirm = onConfirmCallback;
+            document.getElementById('delete-confirmation-text').innerHTML = message;
+            const modal = document.getElementById('delete-note-confirmation-modal');
+            const modalContent = document.getElementById('delete-note-modal-content');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            setTimeout(() => {
+                modalContent.classList.add('scale-100', 'opacity-100');
+                modalContent.classList.remove('scale-95', 'opacity-0');
+            }, 10);
+        }
+
+        window.cancelNoteDeletion = function() {
+            const modal = document.getElementById('delete-note-confirmation-modal');
+            const modalContent = document.getElementById('delete-note-modal-content');
+            modalContent.classList.remove('scale-100', 'opacity-100');
+            modalContent.classList.add('scale-95', 'opacity-0');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+                actionToConfirm = null;
+            }, 300);
+        }
+
+        window.confirmNoteDeletionAction = function() {
+            if (typeof actionToConfirm === 'function') {
+                actionToConfirm();
+            }
+            window.cancelNoteDeletion();
+        }
+
+        function getDiscipleRank(percentage) {
+            const sortedRanks = [...RANKS].sort((a, b) => b.minPercentage - a.minPercentage);
+            for (const rank of sortedRanks) {
+                if (percentage >= rank.minPercentage) {
+                    return rank;
+                }
+            }
+            return RANKS[0]; 
+        }
+        window.showRanksModal = function() {
+            const modal = document.getElementById('ranks-modal');
+            const modalContent = document.getElementById('ranks-modal-content');
+            const ranksList = document.getElementById('ranks-list');
+            let completedCount = 0;
+            for (const key in readingProgress) {
+                if (readingProgress[key].read === true) { 
+                    completedCount++;
+                }
+            }
+            const currentPercentage = TOTAL_CHAPTERS > 0 ? (completedCount / TOTAL_CHAPTERS) * 100 : 0;
+            const currentRank = getDiscipleRank(currentPercentage);
+            let listHtml = '';
+            const sortedRanks = [...RANKS].sort((a, b) => a.minPercentage - b.minPercentage);
+            sortedRanks.forEach((rank) => {
+                const isCurrent = rank.name === currentRank.name; 
+                const achievementText = rank.minPercentage === 100 ? '¡100% COMPLETADO!' : `Alcanza el ${rank.minPercentage.toFixed(0)}%`;
+                const borderColor = isCurrent ? 'border-yellow-500' : 'border-gray-600';
+                const bgColor = isCurrent ? 'bg-yellow-900/40' : 'bg-gray-700';
+                const textColor = isCurrent ? 'text-yellow-300' : 'text-gray-200';
+                const textWeight = isCurrent ? 'font-extrabold' : 'font-semibold';
+                listHtml += `<div class="flex items-center justify-between p-3 rounded-lg border-l-4 ${borderColor} ${bgColor} shadow-md"><div class="flex items-center space-x-3"><span class="text-2xl">${rank.badge}</span><span class="${textWeight} ${textColor}">${rank.name}</span></div><span class="text-sm font-medium ${isCurrent ? 'text-yellow-300' : 'text-gray-400'}">${achievementText}</span></div>`;
+            });
+            ranksList.innerHTML = listHtml;
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            setTimeout(() => {
+                modalContent.classList.add('scale-100', 'opacity-100');
+                modalContent.classList.remove('scale-95', 'opacity-0');
+            }, 10);
+        }
+        window.hideRanksModal = function() {
+            const modal = document.getElementById('ranks-modal');
+            const modalContent = document.getElementById('ranks-modal-content');
+            modalContent.classList.remove('scale-100', 'opacity-100');
+            modalContent.classList.add('scale-95', 'opacity-0');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+            }, 300);
+        }
+        window.hideCompletionModal = function() {
+            document.getElementById('completion-modal').classList.add('hidden'); 
+            document.getElementById('modal-content').classList.remove('scale-100', 'opacity-100');
+            document.getElementById('modal-content').classList.add('scale-95', 'opacity-0');
+        }
+        function updateGlobalProgress() {
+            let completedCount = 0;
+            for (const key in readingProgress) {
+                if (readingProgress[key].read === true) { 
+                    completedCount++;
+                }
+            }
+            const percentage = TOTAL_CHAPTERS > 0 ? (completedCount / TOTAL_CHAPTERS) * 100 : 0;
+            const percentageString = percentage.toFixed(2) + '%';
+            const totalText = `(${completedCount}/${TOTAL_CHAPTERS} Capítulos)`;
+            const progressBar = document.getElementById('global-progress-bar');
+            const percentageTextElement = document.getElementById('global-percentage-text');
+            if (progressBar) { progressBar.style.width = percentageString; }
+            if (percentageTextElement) { percentageTextElement.textContent = `${percentageString} ${totalText}`; }
+            const currentRank = getDiscipleRank(percentage);
+            const rankNameElement = document.getElementById('rank-name');
+            const rankBadgeElement = document.getElementById('rank-badge');
+            if (rankNameElement) { rankNameElement.textContent = currentRank.name; }
+            if (rankBadgeElement) { rankBadgeElement.textContent = currentRank.badge; }
+        }
+        function updateBookHeader(bookName) {
+            const bookElement = document.getElementById(`book-${bookName.replace(/\s/g, '-')}`);
+            if (!bookElement) return;
+            const bookData = BOOK_DATA.find(b => b.name === bookName);
+            if (!bookData) return;
+            const chapterCount = bookData.chapters;
+            let completed = 0;
+            for (let i = 1; i <= chapterCount; i++) {
+                const chapterKey = `${bookName}-${i}`;
+                if (readingProgress[chapterKey] && readingProgress[chapterKey].read) {
+                    completed++;
+                }
+                updateChapterNoteIndicator(chapterKey);
+            }
+            const percentage = chapterCount > 0 ? (completed / chapterCount) * 100 : 0;
+            const progressText = bookElement.querySelector(`#progress-${bookName.replace(/\s/g, '-')}`);
+            if (progressText) { progressText.textContent = `${completed}/${chapterCount} (${percentage.toFixed(0)}%)`; }
+            bookElement.classList.remove('completed', 'in-progress', 'border-gray-700', 'bg-gray-800');
+            if (percentage === 100) { bookElement.classList.add('completed'); } 
+            else if (percentage > 0) { bookElement.classList.add('in-progress'); }
+            else { bookElement.classList.add('bg-gray-800', 'border-gray-700'); }
+            const allCheckbox = document.getElementById(`check-all-${bookName.replace(/\s/g, '-')}`);
+            if (allCheckbox) { allCheckbox.checked = (completed === chapterCount); }
+            updateBookNoteButtonState(bookName);
+        }
+        function showCompletionModal(bookName) {
+            const modal = document.getElementById('completion-modal');
+            const modalContent = document.getElementById('modal-content');
+            const completedBookName = document.getElementById('completed-book-name');
+            if (modal.classList.contains('hidden')) { 
+                completedBookName.textContent = bookName;
+                modal.classList.remove('hidden');
+                modal.classList.add('flex'); 
+                setTimeout(() => {
+                    modalContent.classList.add('scale-100', 'opacity-100');
+                    modalContent.classList.remove('scale-95', 'opacity-0');
+                }, 10);
+            }
+        }
+        function toggleBook(bookName) {
+            const bookNameSafe = bookName.replace(/\s/g, '-');
+            const chapterGrid = document.getElementById(`chapters-${bookNameSafe}`);
+            if (!chapterGrid) return;
+            const isCurrentlyHidden = chapterGrid.classList.contains('hidden');
+            document.querySelectorAll('.chapter-grid').forEach(grid => {
+                if (grid.id !== `chapters-${bookNameSafe}`) {
+                    grid.style.maxHeight = '0';
+                    grid.classList.add('hidden');
+                }
+            });
+            if (isCurrentlyHidden) {
+                chapterGrid.classList.remove('hidden');
+                chapterGrid.style.maxHeight = '1000px'; 
+            } else {
+                chapterGrid.style.maxHeight = '0';
+                chapterGrid.classList.add('hidden');
+            }
+        }
+
+        // --- LÓGICA DE INTERACCIÓN ---
+        window.startPress = function(event, bookName, chapterNumber) {
+            event.preventDefault(); event.stopPropagation();
+            clearTimeout(pressTimer); 
+            isLongPress = false;
+            const chapterKey = `${bookName}-${chapterNumber}`;
+            const isRead = readingProgress[chapterKey] && readingProgress[chapterKey].read;
+            if (isRead) {
+                pressTimer = setTimeout(() => {
+                    isLongPress = true;
+                    window.openChapterNotesModal(bookName, chapterNumber);
+                }, LONG_PRESS_THRESHOLD);
+            }
+        }
+
+        window.endPress = function(event, bookName, chapterNumber, buttonElement) {
+            event.preventDefault(); event.stopPropagation();
+            clearTimeout(pressTimer);
+            if (!isLongPress) {
+                window.toggleChapter(bookName, chapterNumber, buttonElement);
+            }
+            isLongPress = false;
+        }
+
+        window.toggleChapter = function(bookName, chapterNumber, buttonElement) {
+            const chapterKey = `${bookName}-${chapterNumber}`;
+            const isCurrentlyRead = readingProgress[chapterKey] && readingProgress[chapterKey].read;
+            const hasNote = !!allNotes[chapterKey];
+
+            if (isCurrentlyRead && hasNote) {
+                const message = `El capítulo <strong>${bookName} ${chapterNumber}</strong> tiene una nota. Si lo desmarcas, la nota se <strong>eliminará permanentemente</strong>. ¿Continuar?`;
+                showNoteDeletionConfirmation(message, () => {
+                    proceedWithToggle(bookName, chapterNumber, buttonElement);
+                });
+            } else {
+                proceedWithToggle(bookName, chapterNumber, buttonElement);
+            }
+        }
+
+        function proceedWithToggle(bookName, chapterNumber, buttonElement) {
+            const chapterKey = `${bookName}-${chapterNumber}`;
+            readingProgress[chapterKey] = readingProgress[chapterKey] || { read: false };
+            
+            const newState = !readingProgress[chapterKey].read;
+            readingProgress[chapterKey].read = newState;
+
+            if (!newState) {
+                delete allNotes[chapterKey];
+                saveNotes();
+                updateChapterNoteIndicator(chapterKey);
+            }
+
+            buttonElement.className = `chapter-button ${newState ? READ_CLASSES : UNREAD_CLASSES}`;
+            if (allNotes[chapterKey]) buttonElement.classList.add('has-note');
+
+            saveProgress();
+            updateBookHeader(bookName);
+            updateGlobalProgress();
+
+            if (newState) {
+                const bookData = BOOK_DATA.find(b => b.name === bookName);
+                if (bookData) {
+                    let completed = 0;
+                    for (let i = 1; i <= bookData.chapters; i++) {
+                        if (readingProgress[`${bookName}-${i}`] && readingProgress[`${bookName}-${i}`].read) completed++;
+                    }
+                    if (completed === bookData.chapters) showCompletionModal(bookName);
+                }
+            }
+        }
+        
+        function generateChapterButtons(bookName, chapters) {
+            let html = '';
+            for (let i = 1; i <= chapters; i++) {
+                const chapterKey = `${bookName}-${i}`;
+                readingProgress[chapterKey] = readingProgress[chapterKey] || { read: false };
+                const isRead = readingProgress[chapterKey].read;
+                const hasNote = !!allNotes[chapterKey];
+                const classes = isRead ? READ_CLASSES : UNREAD_CLASSES;
+                const noteClass = hasNote ? 'has-note' : '';
+                html += `<button id="${chapterKey}" onmousedown="window.startPress(event, '${bookName}', ${i}, this)" onmouseup="window.endPress(event, '${bookName}', ${i}, this)" ontouchstart="window.startPress(event, '${bookName}', ${i}, this)" ontouchend="window.endPress(event, '${bookName}', ${i}, this)" class="chapter-button ${classes} ${noteClass}">${i}</button>`;
+            }
+            return html;
+        }
+
+        window.handleMarkAllCheckbox = function(event, bookName, checkbox) {
+            event.stopPropagation();
+            
+            const bookData = BOOK_DATA.find(b => b.name === bookName);
+            if (!bookData) return;
+
+            const isUnchecking = !checkbox.checked;
+
+            if (isUnchecking) {
+                let chaptersWithNotes = [];
+                for (let i = 1; i <= bookData.chapters; i++) {
+                    if (allNotes[`${bookName}-${i}`]) {
+                        chaptersWithNotes.push(i);
+                    }
+                }
+
+                if (chaptersWithNotes.length > 0) {
+                    event.preventDefault(); 
+                    const message = `El libro <strong>${bookName}</strong> tiene notas en ${chaptersWithNotes.length} capítulo(s). Si continúas, <strong>todas estas notas se borrarán</strong>.`;
+                    showNoteDeletionConfirmation(message, () => {
+                        checkbox.checked = false; 
+                        proceedWithMarkAll(bookName, false);
+                    });
+                    return;
+                }
+            }
+            
+            proceedWithMarkAll(bookName, checkbox.checked);
+        }
+
+        function proceedWithMarkAll(bookName, targetState) {
+            const bookData = BOOK_DATA.find(b => b.name === bookName);
+            if (!bookData) return;
+
+            for (let i = 1; i <= bookData.chapters; i++) {
+                const chapterKey = `${bookName}-${i}`;
+                readingProgress[chapterKey] = readingProgress[chapterKey] || { read: false };
+                readingProgress[chapterKey].read = targetState;
+
+                if (!targetState) {
+                    delete allNotes[chapterKey];
+                }
+                
+                const chapterButton = document.getElementById(chapterKey);
+                if (chapterButton) {
+                    chapterButton.className = `chapter-button ${targetState ? READ_CLASSES : UNREAD_CLASSES}`;
+                    if (allNotes[chapterKey]) chapterButton.classList.add('has-note');
+                }
+            }
+            saveNotes();
+            saveProgress();
+            updateBookHeader(bookName);
+            updateGlobalProgress();
+            if (targetState) {
+                showCompletionModal(bookName);
+            }
+        }
+
+        // --- FUNCIÓN DE RENDERIZADO PRINCIPAL ---
+        function renderBooks() {
+            const container = document.getElementById('books-container');
+            if (!container) return;
+            let htmlContent = '';
+            BOOK_DATA.forEach((book, index) => {
+                const bookNameSafe = book.name.replace(/\s/g, '-');
+                if (index === 0) {
+                    htmlContent += '<h2 class="section-title text-gray-400">Antiguo Testamento</h2>';
+                } else if (book.name === "Mateo") { 
+                    htmlContent += '<h2 class="section-title text-gray-400">Nuevo Testamento</h2>';
+                }
+                htmlContent += `
+                    <div id="book-${bookNameSafe}" class="book-container rounded-xl shadow-lg mb-4">
+                        <div class="p-4 flex justify-between items-center" onclick="window.toggleBook('${book.name}')">
+                            <h2 class="text-xl font-bold">${book.name}</h2>
+                            <div class="flex flex-row items-center space-x-4">
+                                <button id="note-btn-${bookNameSafe}" onclick="window.openBookNotesModal(event, '${book.name}')" class="note-button" title="Agregar/Ver Nota del Libro">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                                </button>
+                                <span id="progress-${bookNameSafe}" class="text-sm font-semibold text-gray-300">0/${book.chapters} (0%)</span>
+                            </div>
+                        </div>
+                        <div id="chapters-${bookNameSafe}" class="chapter-grid hidden p-4 pt-0 transition-max-height duration-0 overflow-y-hidden">
+                            <div class="flex justify-start gap-4 mb-4 text-gray-200">
+                                <label class="action-checkbox-container">
+                                    <input type="checkbox" id="check-all-${bookNameSafe}" class="action-checkbox-input" onclick="window.handleMarkAllCheckbox(event, '${book.name}', this)">
+                                    Marcar Todo
+                                </label>
+                            </div>
+                            <div class="grid grid-cols-6 sm:grid-cols-8 md:grid-cols-10 gap-2">
+                                ${generateChapterButtons(book.name, book.chapters)}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            container.innerHTML = htmlContent;
+            BOOK_DATA.forEach(book => updateBookHeader(book.name));
+        }
+
+        // --- REGISTRO DEL SERVICE WORKER (PWA) ---
+        function registerServiceWorker() {
+            if ('serviceWorker' in navigator) {
+                window.addEventListener('load', () => {
+                    // Usamos una ruta relativa para que funcione tanto en local como en producción.
+                    navigator.serviceWorker.register('service-worker.js')
+                        .then(registration => {
+                            console.log('✅ Service Worker registrado con éxito. Alcance:', registration.scope);
+                            document.getElementById('loading-status').textContent = 'Listo. App preparada para uso sin conexión.';
+                        })
+                        .catch(error => {
+                            console.error('❌ Fallo el registro del Service Worker:', error);
+                            document.getElementById('loading-status').textContent = 'Error al registrar para uso sin conexión.';
+                            if (window.location.protocol === 'file:') {
+                                console.warn('Pista: Las PWAs y Service Workers no funcionan al abrir archivos directamente. Debes usar un servidor web local.');
+                                document.getElementById('loading-status').textContent += ' Consejo: usa un servidor local.';
+                            }
+                        });
+                });
+            } else {
+                console.warn('⚠️ Tu navegador no soporta Service Workers. La app no funcionará sin conexión.');
+                document.getElementById('loading-status').textContent = 'PWA no soportada en este navegador.';
+            }
+        }
+
+        // --- INICIALIZACIÓN DE LA APLICACIÓN ---
+        window.onload = function() {
+            loadProgress();         
+            loadNotes();            
+            renderBooks();          
+            updateGlobalProgress(); 
+            // ¡Registro activado!
+            registerServiceWorker();
+        };
+
+    </script>
+</body>
+</html>
+
